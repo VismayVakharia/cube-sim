@@ -36,10 +36,10 @@ function addSeparatorToScene(axis) {
     scene.add( separator );
 }
 
-// camera.position.x = 3;
-// camera.position.y = 3;
-// camera.position.z = 3;
-// camera.lookAt( 0, 0, 0 );
+camera.position.x = 3;
+camera.position.y = 3;
+camera.position.z = 3;
+camera.lookAt( 0, 0, 0 );
 
 function debug_vector(start_vec, end_vec) {
     var geometry = new THREE.Geometry();
@@ -52,28 +52,31 @@ function debug_vector(start_vec, end_vec) {
 
 var black_material = new THREE.MeshBasicMaterial( { color: "black" } );
 
-for (var i = -1; i < 2; i++){
-    addSeparatorToScene(new THREE.Vector3( 1, 0, 0 ));
-    addSeparatorToScene(new THREE.Vector3( -1, 0, 0 ));
+function drawCube(state) {
+    for (let piece of state.pieces) {
+        let piece_position = new THREE.Vector3(...piece.position);
+        let piece_orientation = new THREE.Quaternion(...piece.orientation);
+        addCubieToScene(piece_position, piece_orientation);
+    }
+    for (var i = -1; i < 2; i++) {
+        addSeparatorToScene(new THREE.Vector3(1, 0, 0));
+        addSeparatorToScene(new THREE.Vector3(-1, 0, 0));
 
-    for (var j = -1; j < 2; j++){
-        addSeparatorToScene(new THREE.Vector3( 0, 1, 0 ));
-        addSeparatorToScene(new THREE.Vector3( 0, -1, 0 ));
+        for (var j = -1; j < 2; j++) {
+            addSeparatorToScene(new THREE.Vector3(0, 1, 0));
+            addSeparatorToScene(new THREE.Vector3(0, -1, 0));
 
-        for (var k = -1; k < 2; k++){
-            addCubieToScene( new THREE.Vector3( 1.05 * i, 1.05 * j, 1.05 * k ) );
-
-            addSeparatorToScene(new THREE.Vector3( 0, 0, 1 ));
-            addSeparatorToScene(new THREE.Vector3( 0, 0, -1 ));
+            for (var k = -1; k < 2; k++) {
+                //addCubieToScene( new THREE.Vector3( 1.05 * i, 1.05 * j, 1.05 * k ) );
+                addSeparatorToScene(new THREE.Vector3(0, 0, 1));
+                addSeparatorToScene(new THREE.Vector3(0, 0, -1));
+            }
         }
     }
 }
 
-var theta = 0;
-
 function animate() {
-
-    theta += 0.01;
+    theta += 0.005;
 
     requestAnimationFrame( animate );
     var z = Math.cos(theta);
@@ -88,6 +91,12 @@ function animate() {
 
     renderer.render( scene, camera );
 }
-renderer.render( scene, camera );
 
+fetch("/getstate")
+.then(data=>data.json())
+.then(drawCube);
+
+var theta = 0;
+
+renderer.render( scene, camera );
 animate();
