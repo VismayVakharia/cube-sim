@@ -111,9 +111,11 @@ $(document).ready(function() {
     
     initCube();
 
-    $("#btn-right").click(function() {
-        console.log("btn-right clicked");
-        $.post("/maketurn", JSON.stringify({move: "R"}))
+    $("button.move-btn").click(function() {
+        let basemove = $(this).data().move;
+        let modifier = $("input[name=modifier]:checked").val();
+        let move = basemove + modifier;
+        $.post("/maketurn", JSON.stringify({move}))
             .done(function(data) {
                 if (data.status === "ok")
                     updateCube(data);
