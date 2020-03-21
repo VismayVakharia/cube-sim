@@ -136,7 +136,17 @@ class Cube(object):
             self.centers.append(Piece(PieceType.CENTER, color_list,
                                       position_vec, orient_vec()))
 
-        self.pieces = self.centers + self.corners + self.edges
+        self.ultra_centers = [Piece(PieceType.CENTER, color_list,
+                                    Vector(0, 0, 0), orient_vec())]
+
+        self.pieces = self.ultra_centers + self.centers + self.corners + self.edges
+
+        self.move_directions = {"R": Vector( 1,  0,  0),
+                                "U": Vector( 0,  1,  0),
+                                "F": Vector( 0,  0,  1),
+                                "L": Vector(-1,  0,  0),
+                                "D": Vector( 0, -1,  0),
+                                "B": Vector( 0,  0, -1)}
 
     def _rotate(self, axis: Vector, multiplier: int = -1):
         axis = axis.as_array()
@@ -151,21 +161,23 @@ class Cube(object):
 
     def rotate(self, move: str):
         multiplier = -1
-        if len(move) == 2:
-            if move[1] == "'":
-                multiplier = 1
+        if 1 <= len(move) <= 2:
+            if len(move) == 2:
+                if move[1] == "'":
+                    multiplier = 1
+                elif move[1] == "2":
+                    multiplier = 2
+                else:
+                    return False
+                move = move[0]
+
+            if move in self.move_directions:  # invalid move
+                self._rotate(self.move_directions[move], multiplier)
+                return True
             else:
-                multiplier = 2
-            move = move[0]
-        opposite_moves = {"L": "R", "B": "F", "D": "U"}
-        move_directions = {"R": Vector(1, 0, 0),
-                           "U": Vector(0, 1, 0),
-                           "F": Vector(0, 0, 1)}
-        flip_axis = 1
-        if move in opposite_moves:
-            move = opposite_moves[move]
-            flip_axis = -1
-        self._rotate(move_directions[move] * flip_axis, multiplier)
+                return False
+        else:
+            return False
 
 
 if __name__ == "__main__":
@@ -173,7 +185,6 @@ if __name__ == "__main__":
     print(*cube.corners, sep="\n")
     print(*cube.edges, sep="\n")
     print(*cube.centers, sep="\n")
-    cube._rotate(Vector(1, 0, 0), 1)
     cube.rotate("R")
     print("Rotated Cube")
     print(*cube.corners, sep="\n")

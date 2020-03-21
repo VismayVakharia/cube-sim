@@ -4,7 +4,7 @@ var camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHe
 var renderer = new THREE.WebGLRenderer( {antialias: true} );
 renderer.setSize( window.innerWidth/1.1, window.innerHeight/1.1 );
 // TODO: set canvas size properly
-document.body.appendChild( renderer.domElement );
+
 
 var materials = [
     new THREE.MeshBasicMaterial( {color:"red"} ),             // +X face
@@ -15,12 +15,15 @@ var materials = [
     new THREE.MeshBasicMaterial( {color:"green"} )            // -Z face
 ];
 
+let cubies = [];
+
 function addCubieToScene(position, quaternion = new THREE.Quaternion( 0, 0, 0, 1 )) {
     var geometry = new THREE.BoxBufferGeometry( 1, 1, 1 );
     var cubie = new THREE.Mesh(geometry, materials);
     cubie.position.set( position.x, position.y, position.z );
     cubie.setRotationFromQuaternion(quaternion);
     scene.add( cubie );
+    cubies = cubies.concat(cubie);
 }
 
 function addSeparatorToScene(axis) {
@@ -52,12 +55,7 @@ function debug_vector(start_vec, end_vec) {
 
 var black_material = new THREE.MeshBasicMaterial( { color: "black" } );
 
-function drawCube(state) {
-    for (let piece of state.pieces) {
-        let piece_position = new THREE.Vector3(...piece.position);
-        let piece_orientation = new THREE.Quaternion(...piece.orientation);
-        addCubieToScene(piece_position, piece_orientation);
-    }
+function initCube() {
     for (var i = -1; i < 2; i++) {
         addSeparatorToScene(new THREE.Vector3(1, 0, 0));
         addSeparatorToScene(new THREE.Vector3(-1, 0, 0));
@@ -67,11 +65,23 @@ function drawCube(state) {
             addSeparatorToScene(new THREE.Vector3(0, -1, 0));
 
             for (var k = -1; k < 2; k++) {
-                //addCubieToScene( new THREE.Vector3( 1.05 * i, 1.05 * j, 1.05 * k ) );
+                addCubieToScene( new THREE.Vector3( 1.05 * i, 1.05 * j, 1.05 * k ) );
                 addSeparatorToScene(new THREE.Vector3(0, 0, 1));
                 addSeparatorToScene(new THREE.Vector3(0, 0, -1));
             }
         }
+    }
+}
+
+function updateCube(state) {
+    for (let i=0; i<state.pieces.length; i++) {
+        let piece = state.pieces[i],
+            cubie = cubies[i];
+        let piece_position = new THREE.Vector3(...piece.position);
+        let piece_orientation = new THREE.Quaternion(...piece.orientation);
+        piece_position.multiplyScalar(1.05);
+        cubie.position.set( piece_position.x, piece_position.y, piece_position.z );
+        cubie.setRotationFromQuaternion( piece_orientation );
     }
 }
 
@@ -92,11 +102,27 @@ function animate() {
     renderer.render( scene, camera );
 }
 
-fetch("/getstate")
-.then(data=>data.json())
-.then(drawCube);
 
 var theta = 0;
 
-renderer.render( scene, camera );
-animate();
+$(document).ready(function() {
+
+    $('body').prepend(renderer.domElement);  // add canvas to DOM
+    
+    initCube();
+
+    $("#btn-right").click(function() {
+        console.log("btn-right clicked");
+        $.post("/maketurn", JSON.stringify({move: "R"}))
+            .done(function(data) {
+                if (data.status === "ok")
+                    updateCube(data);
+                else
+                    alert("invalid turn")
+            });
+    });
+
+    renderer.render( scene, camera );
+    animate();
+
+});
