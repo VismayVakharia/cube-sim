@@ -2,6 +2,7 @@ import http.server
 import socketserver
 from http import HTTPStatus
 import json
+from urllib.parse import urlparse, parse_qsl
 
 from cube import Cube
 
@@ -26,26 +27,39 @@ class CubeHandler(http.server.SimpleHTTPRequestHandler):
         super().__init__(request, client_address, server)
 
     def do_GET(self):
-        if self.path == "/getstate":
-            self.send_response(HTTPStatus.OK)
-            self.send_header("Content-type", "application/json")
-            self.end_headers()
-            state_json = get_state(global_cube)
-            self.wfile.write(json.dumps(state_json).encode())
+        parsed_url = urlparse(self.path)
+        params = dict(parse_qsl(parsed_url.query))
+        if parsed_url.path == "/getstate":
+            if "user" not in params:
+                self.send_response(HTTPStatus.BAD_REQUEST)
+                self.end_headers()
+            else:
+                self.send_response(HTTPStatus.OK)
+                self.send_header("Content-type", "application/json")
+                self.end_headers()
+                user = params["user"]
+                if user not in global_cubes:
+                    global_cubes[user] = Cube(3)
+                state_json = get_state(global_cubes[user])
+                self.wfile.write(json.dumps(state_json).encode())
         else:  # fetch file normally
             super().do_GET()
 
     def do_POST(self):
         if self.path == "/maketurn":
-            content_length = int(self.headers['Content-Length'])
-            body = self.rfile.read(content_length).decode()
+            if 'Content-Length' in self.headers:
+                content_length = int(self.headers['Content-Length'])
+                body = self.rfile.read(content_length).decode()
+            else:
+                body = self.rfile.read().decode()
             data = json.loads(body)
             print("got data for maketurn", data)
-            res = global_cube.rotate(data["move"])
+            user = data["user"]
+            res = global_cubes[user].rotate(data["move"])
             self.send_response(HTTPStatus.OK)
             self.send_header("Content-type", "application/json")
             self.end_headers()
-            state_json = get_state(global_cube)
+            state_json = get_state(global_cubes[user])
             state_json["status"] = "ok" if res else "error"
             self.wfile.write(json.dumps(state_json).encode())
         else:
@@ -53,7 +67,8 @@ class CubeHandler(http.server.SimpleHTTPRequestHandler):
 
 
 if __name__ == '__main__':
-    global_cube = Cube(3)
+    global_cubes = {}
+    socketserver.TCPServer.allow_reuse_address = True  # only for testing
     with socketserver.TCPServer(("", PORT), CubeHandler) as httpd:
         print("serving at port", PORT)
         httpd.serve_forever()

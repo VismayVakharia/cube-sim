@@ -102,20 +102,33 @@ function animate() {
     renderer.render( scene, camera );
 }
 
+function getstate() {
+    $.get("/getstate", {user})
+        .done(function (data) {
+            updateCube(data);
+        });
+}
+
 
 var theta = 0;
+let user;
+
 
 $(document).ready(function() {
+    user = prompt("Enter Username:");
 
     $('body').prepend(renderer.domElement);  // add canvas to DOM
-    
+
     initCube();
+    getstate();
+
+    setInterval(getstate, 500);
 
     $("button.move-btn").click(function() {
         let basemove = $(this).data().move;
         let modifier = $("input[name=modifier]:checked").val();
         let move = basemove + modifier;
-        $.post("/maketurn", JSON.stringify({move}))
+        $.post("/maketurn", JSON.stringify({user, move}))
             .done(function(data) {
                 if (data.status === "ok")
                     updateCube(data);
