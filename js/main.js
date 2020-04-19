@@ -1,8 +1,8 @@
 var scene = new THREE.Scene();
 var camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
-
+// var camera = new THREE.OrthographicCamera( width / - 2, width / 2, height / 2, height / - 2, near, far );
 var renderer = new THREE.WebGLRenderer( {antialias: true} );
-renderer.setSize( window.innerWidth/1.1, window.innerHeight/1.1 );
+renderer.setSize( window.innerWidth/1.3, window.innerHeight/1.3 );
 // TODO: set canvas size properly
 
 
@@ -109,6 +109,15 @@ function getstate() {
         });
 }
 
+function maketurn(move) {
+    $.post("/maketurn", JSON.stringify({user, move}))
+            .done(function(data) {
+                if (data.status === "ok")
+                    updateCube(data);
+                else
+                    alert("invalid turn")
+            });
+}
 
 var theta = 0;
 let user;
@@ -116,6 +125,7 @@ let user;
 
 $(document).ready(function() {
     user = prompt("Enter Username:");
+    $("#username").text(user);
 
     $('body').prepend(renderer.domElement);  // add canvas to DOM
 
@@ -124,17 +134,16 @@ $(document).ready(function() {
 
     setInterval(getstate, 500);
 
+    for (let turn of "RUFLDBMESxyz") {
+        Mousetrap.bind(turn.toLowerCase(), function() {maketurn(turn); });
+        Mousetrap.bind(turn.toUpperCase(), function() {maketurn(turn + "'"); });
+    }
+
     $("button.move-btn").click(function() {
         let basemove = $(this).data().move;
         let modifier = $("input[name=modifier]:checked").val();
         let move = basemove + modifier;
-        $.post("/maketurn", JSON.stringify({user, move}))
-            .done(function(data) {
-                if (data.status === "ok")
-                    updateCube(data);
-                else
-                    alert("invalid turn")
-            });
+        maketurn(move);
     });
 
     renderer.render( scene, camera );

@@ -141,21 +141,39 @@ class Cube(object):
 
         self.pieces = self.ultra_centers + self.centers + self.corners + self.edges
 
-        self.move_directions = {"R": Vector( 1,  0,  0),
-                                "U": Vector( 0,  1,  0),
-                                "F": Vector( 0,  0,  1),
-                                "L": Vector(-1,  0,  0),
-                                "D": Vector( 0, -1,  0),
-                                "B": Vector( 0,  0, -1)}
+        self.face_turns  = {"R": Vector( 1,  0,  0),
+                            "U": Vector( 0,  1,  0),
+                            "F": Vector( 0,  0,  1),
+                            "L": Vector(-1,  0,  0),
+                            "D": Vector( 0, -1,  0),
+                            "B": Vector( 0,  0, -1)}
+        self.slice_turns = {"M": Vector(-1,  0,  0),
+                            "E": Vector( 0, -1,  0),
+                            "S": Vector( 0,  0,  1)}
+        self.whole_turns = {"x": Vector( 1,  0,  0),
+                            "y": Vector( 0,  1,  0),
+                            "z": Vector( 0,  0,  1)}
+        self.double_turns = {move.lower(): vec for (move, vec) in self.face_turns.items()}
 
-    def _rotate(self, axis: Vector, multiplier: int = -1):
+    def _rotate(self, axis: Vector, multiplier: int = -1, turn_type: str = "face"):
         axis = axis.as_array()
         rotation_vec = axis * multiplier * (np.pi/2)
         rotation_quat = quaternion.from_rotation_vector(rotation_vec)
 
+        assert turn_type in ["face", "double", "slice", "whole"], "invalid turn type"
+
         for piece in self.pieces:
             pos = piece.position.as_array()
-            if np.dot(pos, axis) > 0.5:  # TODO: generalize for nxn cube
+            if turn_type == "face":
+                condition = np.dot(pos, axis) > 0.5
+            elif turn_type == "double":
+                condition = np.dot(pos, axis) > -0.5
+            elif turn_type == "slice":
+                condition = abs(np.dot(pos, axis)) <= 0.5
+            else:  # turn_type == "whole"
+                condition = True
+
+            if condition:  # TODO: generalize for nxn cube
                 piece.orientation = rotation_quat * piece.orientation
                 piece.position = Vector(*quaternion.rotate_vectors(rotation_quat, pos))
 
@@ -171,11 +189,17 @@ class Cube(object):
                     return False
                 move = move[0]
 
-            if move in self.move_directions:  # invalid move
-                self._rotate(self.move_directions[move], multiplier)
-                return True
-            else:
+            if move in self.face_turns:
+                self._rotate(self.face_turns[move], multiplier, turn_type="face")
+            elif move in self.double_turns:
+                self._rotate(self.double_turns[move], multiplier, turn_type="double")
+            elif move in self.slice_turns:
+                self._rotate(self.slice_turns[move], multiplier, turn_type="slice")
+            elif move in self.whole_turns:
+                self._rotate(self.whole_turns[move], multiplier, turn_type="whole")
+            else:  # invalid move
                 return False
+            return True
         else:
             return False
 
