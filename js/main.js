@@ -1,12 +1,16 @@
 var scene = new THREE.Scene();
+scene.background = new THREE.Color( 0xc0c0c0 );
 var camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
 // var camera = new THREE.OrthographicCamera( width / - 2, width / 2, height / 2, height / - 2, near, far );
 var renderer = new THREE.WebGLRenderer( {antialias: true} );
 renderer.setSize( window.innerWidth/1.3, window.innerHeight/1.3 );
 // TODO: set canvas size properly
 
+const CUBIE_DIM = 1;
+const STICKER_PADDING = 0.05;
+const STICKER_THICKNESS = 0.02;  // max value: 1
 
-var materials = [
+const sticker_materials = [
     new THREE.MeshBasicMaterial( {color:"red"} ),             // +X face
     new THREE.MeshBasicMaterial( {color:0xff8c00} ),          // -X face
     new THREE.MeshBasicMaterial( {color:0xffff33} ),          // +Y face
@@ -15,28 +19,47 @@ var materials = [
     new THREE.MeshBasicMaterial( {color:"green"} )            // -Z face
 ];
 
+const black_material = new THREE.MeshBasicMaterial( { color: "black" } );
+
+function makeCubie() {
+    const cubie = new THREE.Object3D();
+    const size = CUBIE_DIM - STICKER_PADDING*2;
+    const sticker_geometry = new THREE.BoxGeometry(size, size, STICKER_THICKNESS);
+
+    // add black background cubie
+    const base_geometry = new THREE.BoxGeometry( 1, 1, 1 );
+    const base_cubie = new THREE.Mesh(base_geometry, black_material);
+    base_cubie.position.set( 0, 0, 0 );
+    cubie.add(base_cubie);
+
+    // add stickers
+    [
+        { position: [  1, 0, 0] },                            // +X face
+        { position: [ -1, 0, 0] },                            // -X face
+        { position: [ 0,  1, 0] },                            // +Y face
+        { position: [ 0, -1, 0] },                            // -Y face
+        { position: [ 0, 0,  1] },                            // +Z face
+        { position: [ 0, 0, -1] },                            // -Z face
+    ].forEach((settings, index) => {
+        const sticker_material = sticker_materials[index];
+        sticker_material.side = THREE.DoubleSide;
+        const sticker = new THREE.Mesh(sticker_geometry, sticker_material);
+        sticker.lookAt(...settings.position);
+        sticker.position.set(...settings.position).multiplyScalar(CUBIE_DIM/2 + STICKER_THICKNESS/2);
+        // sticker.position.set(...settings.position).multiplyScalar(CUBIE_DIM/2);
+        cubie.add(sticker);
+    });
+    return cubie;
+}
+
 let cubies = [];
 
 function addCubieToScene(position, quaternion = new THREE.Quaternion( 0, 0, 0, 1 )) {
-    var geometry = new THREE.BoxBufferGeometry( 1, 1, 1 );
-    var cubie = new THREE.Mesh(geometry, materials);
+    const cubie = makeCubie();
     cubie.position.set( position.x, position.y, position.z );
     cubie.setRotationFromQuaternion(quaternion);
     scene.add( cubie );
     cubies = cubies.concat(cubie);
-}
-
-function addSeparatorToScene(axis) {
-    if (axis.x === 1 || axis.x === -1)
-        var geometry = new THREE.BoxGeometry( 0.05, 3.1, 3.1 );
-    if (axis.y === 1 || axis.y === -1)
-        var geometry = new THREE.BoxGeometry( 3.1, 0.05, 3.1 );
-    if (axis.z === 1 || axis.z === -1)
-        var geometry = new THREE.BoxGeometry( 3.1, 3.1, 0.05 );
-    var black_material = new THREE.MeshBasicMaterial( { color: "black" } );
-    var separator = new THREE.Mesh(geometry, black_material);
-    separator.position.set( axis.x * 0.525, axis.y * 0.525, axis.z * 0.525);
-    scene.add( separator );
 }
 
 camera.position.x = 3;
@@ -53,21 +76,11 @@ function debug_vector(start_vec, end_vec) {
     scene.add( line );
 }
 
-var black_material = new THREE.MeshBasicMaterial( { color: "black" } );
-
 function initCube() {
     for (var i = -1; i < 2; i++) {
-        addSeparatorToScene(new THREE.Vector3(1, 0, 0));
-        addSeparatorToScene(new THREE.Vector3(-1, 0, 0));
-
         for (var j = -1; j < 2; j++) {
-            addSeparatorToScene(new THREE.Vector3(0, 1, 0));
-            addSeparatorToScene(new THREE.Vector3(0, -1, 0));
-
             for (var k = -1; k < 2; k++) {
-                addCubieToScene( new THREE.Vector3( 1.05 * i, 1.05 * j, 1.05 * k ) );
-                addSeparatorToScene(new THREE.Vector3(0, 0, 1));
-                addSeparatorToScene(new THREE.Vector3(0, 0, -1));
+                addCubieToScene( new THREE.Vector3( i, j, k ) );
             }
         }
     }
@@ -79,7 +92,6 @@ function updateCube(state) {
             cubie = cubies[i];
         let piece_position = new THREE.Vector3(...piece.position);
         let piece_orientation = new THREE.Quaternion(...piece.orientation);
-        piece_position.multiplyScalar(1.05);
         cubie.position.set( piece_position.x, piece_position.y, piece_position.z );
         cubie.setRotationFromQuaternion( piece_orientation );
     }
