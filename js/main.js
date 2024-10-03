@@ -6,6 +6,8 @@ var renderer = new THREE.WebGLRenderer( {antialias: true} );
 renderer.setSize( window.innerWidth/1.3, window.innerHeight/1.3 );
 // TODO: set canvas size properly
 
+var controls = new THREE.OrbitControls( camera, renderer.domElement );
+
 const CUBIE_DIM = 1;
 const STICKER_PADDING = 0.05;
 const STICKER_THICKNESS = 0.02;  // max value: 1
@@ -98,18 +100,11 @@ function updateCube(state) {
 }
 
 function animate() {
-    theta += 0.005;
+    controls.update();
 
     requestAnimationFrame( animate );
     var z = Math.cos(theta);
     var x = Math.sin(theta);
-
-	camera.position.x = 5 * x;
-    camera.position.y = 5 * z;
-    camera.position.z = 5 * z;
-    camera.lookAt( 2 * noise.perlin2( Math.cos(theta), Math.sin(theta) ),
-                   2 * noise.perlin2( Math.cos(theta)+1, Math.sin(theta)+1 ),
-                   2 * noise.perlin2( Math.cos(theta)+2, Math.sin(theta)+2 ));
 
     renderer.render( scene, camera );
 }
